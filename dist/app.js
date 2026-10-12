@@ -8,28 +8,104 @@ board.edges=[1,2,3].map((_,i)=>({id:crypto.randomUUID(),from:board.nodes[2].id,t
 function toast(t){$('#toast').textContent=t;$('#toast').style.opacity=1;clearTimeout(toast.timer);toast.timer=setTimeout(()=>$('#toast').style.opacity=0,2600)}
 function checkpoint(){history.push(JSON.stringify(board));if(history.length>70)history.shift();future=[];markDirty()}
 function markDirty(){dirty=true;$('#saveState').textContent='Unsaved changes';updateButtons()}
-function updateButtons(){$('#undo').disabled=!history.length;$('#redo').disabled=!future.length;$('#duplicate').disabled=!selected;$('#delete').disabled=!selected;$('#nodeCount').textContent=board.nodes.length+' elements';$('#count').textContent=boards.length}
+function updateButtons(){$('#undo').disabled=!history.length;$('#redo').disabled=!future.length;$('#duplicate').disabled=!selectedNode();$('#delete').disabled=!selected;const arrowSelected=board.edges.some(e=>e.id===selected);$('#delete').textContent=arrowSelected?'⌫ Delete arrow':'⌫ Delete';$('#delete').title=arrowSelected?'Delete selected arrow':'Delete selection';$('#nodeCount').textContent=board.nodes.length+' elements';$('#count').textContent=boards.length}
 function selectedNode(){return board.nodes.find(n=>n.id===selected)}
-function render(){const container=$('#nodes');container.replaceChildren();board.nodes.forEach(n=>{let el=document.createElement('div');el.className='node '+n.type+(n.id===selected?' selected':'');el.dataset.id=n.id;el.textContent=n.text;Object.assign(el.style,{left:n.x+'px',top:n.y+'px',width:n.w+'px',height:n.h+'px',background:n.color,fontSize:n.size+'px'});el.addEventListener('pointerdown',e=>nodeDown(e,n));el.addEventListener('dblclick',()=>editNode(n,el));container.append(el)});renderEdges();updateButtons();const n=selectedNode();if(n){$('#fontSize').value=n.size;$$('.swatch').forEach(b=>b.classList.toggle('active',b.dataset.color===n.color))}}
+function render(){const container=$('#nodes');container.replaceChildren();board.nodes.forEach(n=>{let el=document.createElement('div');el.className='node '+n.type+(n.id===selected?' selected':'');el.dataset.id=n.id;el.textContent=n.text;Object.assign(el.style,{left:n.x+'px',top:n.y+'px',width:n.w+'px',height:n.h+'px',background:n.color,fontSize:n.size+'px'});el.addEventListener('pointerdown',e=>nodeDown(e,n));el.addEventListener('dblclick',()=>editNode(n,el));container.append(el)});renderEdges();renderResizeBox();updateButtons();if(tool==='select')$('#hint').textContent=board.edges.some(e=>e.id===selected)?'Arrow selected · Press Delete or click Delete arrow to remove':'Select an element and drag its boundary to resize';const n=selectedNode();if(n){$('#fontSize').value=n.size;$$('.swatch').forEach(b=>b.classList.toggle('active',b.dataset.color===n.color))}}
 function edgePath(e){let a=board.nodes.find(n=>n.id===e.from),b=board.nodes.find(n=>n.id===e.to);if(!a||!b)return '';let ax=a.x+a.w/2,ay=a.y+a.h/2,bx=b.x+b.w/2,by=b.y+b.h/2;let vertical=Math.abs(by-ay)>Math.abs(bx-ax)*.5;if(vertical){ay+=Math.sign(by-ay)*a.h/2;by-=Math.sign(by-ay)*b.h/2;let mid=(ay+by)/2;return `M ${ax} ${ay} C ${ax} ${mid}, ${bx} ${mid}, ${bx} ${by}`}ax+=Math.sign(bx-ax)*a.w/2;bx-=Math.sign(bx-ax)*b.w/2;let mid=(ax+bx)/2;return `M ${ax} ${ay} C ${mid} ${ay}, ${mid} ${by}, ${bx} ${by}`}
-function renderEdges(){const g=$('#edgePaths');g.replaceChildren();board.edges.forEach(e=>{const p=document.createElementNS('http://www.w3.org/2000/svg','path');p.setAttribute('d',edgePath(e));p.classList.add('edge');g.append(p)})}
-function nodeDown(e,n){if(e.target.isContentEditable)return;e.stopPropagation();if(tool==='connect'){if(!connectFrom){connectFrom=n.id;selected=n.id;toast('Now click the shape to connect to')}else if(connectFrom!==n.id){if(!board.edges.some(x=>x.from===connectFrom&&x.to===n.id)){checkpoint();board.edges.push({id:crypto.randomUUID(),from:connectFrom,to:n.id})}connectFrom=null;setTool('select')}render();return}selected=n.id;$$('.node').forEach(el=>el.classList.toggle('selected',el.dataset.id===n.id));$('#fontSize').value=n.size;updateButtons();let start={x:e.clientX,y:e.clientY,nx:n.x,ny:n.y},moved=false;const move=ev=>{if(!moved){checkpoint();moved=true}n.x=Math.max(0,start.nx+(ev.clientX-start.x)/zoom);n.y=Math.max(0,start.ny+(ev.clientY-start.y)/zoom);let el=$(`[data-id="${n.id}"]`);el.style.left=n.x+'px';el.style.top=n.y+'px';renderEdges()};const up=()=>{window.removeEventListener('pointermove',move);window.removeEventListener('pointerup',up)};window.addEventListener('pointermove',move);window.addEventListener('pointerup',up)}
-function editNode(n,el){if(n.type==='emoji')return;checkpoint();el.contentEditable='true';el.focus();let range=document.createRange();range.selectNodeContents(el);let selection=getSelection();selection.removeAllRanges();selection.addRange(range);el.addEventListener('blur',()=>{n.text=el.innerText;el.contentEditable='false';render()},{once:true});el.addEventListener('keydown',e=>{e.stopPropagation();if(e.key==='Escape'||(e.key==='Enter'&&!e.shiftKey)){e.preventDefault();el.blur()}})}
-function setTool(t){tool=t;connectFrom=null;$$('[data-tool]').forEach(b=>b.classList.toggle('active',b.dataset.tool===t));$('#hint').textContent=t==='connect'?'Click a shape, then another to connect them':'Double-click any text to edit · Drag blank space to pan'}
+function renderEdges(){
+  const g=$('#edgePaths');g.replaceChildren();
+  board.edges.forEach(e=>{
+    const path=edgePath(e);
+    const visible=document.createElementNS('http://www.w3.org/2000/svg','path');
+    visible.setAttribute('d',path);visible.classList.add('edge');
+    if(e.id===selected)visible.classList.add('selected-edge');
+    g.append(visible);
+    const hit=document.createElementNS('http://www.w3.org/2000/svg','path');
+    hit.setAttribute('d',path);hit.classList.add('edge-hit');
+    hit.setAttribute('stroke-width',16/zoom);
+    hit.setAttribute('aria-label','Arrow relationship');
+    hit.setAttribute('role','button');hit.setAttribute('tabindex','0');
+    function selectArrow(){selected=e.id;setTool('select');render();$('#hint').textContent='Arrow selected · Press Delete or click Delete arrow to remove'}
+    hit.addEventListener('pointerdown',event=>{event.preventDefault();event.stopPropagation();selectArrow()});
+    hit.addEventListener('keydown',event=>{if(event.key==='Enter'||event.key===' '){event.preventDefault();event.stopPropagation();selectArrow()}});
+    g.append(hit);
+  });
+}
+function renderResizeBox(){
+  const n=selectedNode();let box=$('#selectionBounds');
+  if(!n||tool!=='select'||$(`[data-id="${n.id}"]`)?.isContentEditable){box?.remove();return}
+  if(!box){
+    box=document.createElement('div');box.id='selectionBounds';$('#world').append(box);
+    const directions={n:'top',ne:'top right',e:'right',se:'bottom right',s:'bottom',sw:'bottom left',w:'left',nw:'top left'};
+    for(const [direction,label] of Object.entries(directions)){
+      if(direction.length===1){const edge=document.createElement('div');edge.className='resize-edge resize-'+direction;edge.addEventListener('pointerdown',event=>resizeDown(event,direction));box.append(edge)}
+      const handle=document.createElement('button');handle.className='resize-handle resize-'+direction;
+      handle.setAttribute('aria-label','Resize '+label);handle.title='Drag to resize';
+      handle.addEventListener('pointerdown',event=>resizeDown(event,direction));box.append(handle);
+    }
+  }
+  Object.assign(box.style,{left:n.x+'px',top:n.y+'px',width:n.w+'px',height:n.h+'px',borderWidth:1.5/zoom+'px'});
+  box.style.setProperty('--handle-size',12/zoom+'px');
+  box.style.setProperty('--edge-hit-size',12/zoom+'px');
+}
+function resizeDown(event,direction){
+  const n=selectedNode();if(!n)return;
+  event.preventDefault();event.stopPropagation();
+  const origin={...n},pointer={x:event.clientX,y:event.clientY},scaleAtStart=zoom;
+  let changed=false;
+  const move=ev=>{
+    if(ev.pointerId!==event.pointerId)return;
+    const dx=(ev.clientX-pointer.x)/scaleAtStart,dy=(ev.clientY-pointer.y)/scaleAtStart;
+    if(!changed&&Math.abs(dx)+Math.abs(dy)<1)return;
+    if(!changed){checkpoint();changed=true}
+    if(n.type==='emoji'){
+      // Icons keep their proportions and the opposite boundary stays anchored.
+      const sx=direction.includes('e')?1+dx/origin.w:direction.includes('w')?1-dx/origin.w:1;
+      const sy=direction.includes('s')?1+dy/origin.h:direction.includes('n')?1-dy/origin.h:1;
+      let ratio=direction.length===1?(direction==='e'||direction==='w'?sx:sy):(Math.abs(sx-1)>=Math.abs(sy-1)?sx:sy);
+      let maxRatio=800/Math.max(origin.w,origin.h);
+      if(direction.includes('w'))maxRatio=Math.min(maxRatio,(origin.x+origin.w)/origin.w);
+      if(direction.includes('n'))maxRatio=Math.min(maxRatio,(origin.y+origin.h)/origin.h);
+      if(!direction.includes('e')&&!direction.includes('w'))maxRatio=Math.min(maxRatio,1+2*origin.x/origin.w);
+      if(!direction.includes('n')&&!direction.includes('s'))maxRatio=Math.min(maxRatio,1+2*origin.y/origin.h);
+      ratio=Math.max(24/Math.min(origin.w,origin.h),Math.min(maxRatio,ratio));
+      n.w=origin.w*ratio;n.h=origin.h*ratio;n.size=origin.size*ratio;
+      n.x=direction.includes('w')?origin.x+origin.w-n.w:direction.includes('e')?origin.x:origin.x+(origin.w-n.w)/2;
+      n.y=direction.includes('n')?origin.y+origin.h-n.h:direction.includes('s')?origin.y:origin.y+(origin.h-n.h)/2;
+    }else{
+      if(direction.includes('e'))n.w=Math.max(32,Math.min(1600,origin.w+dx));
+      if(direction.includes('s'))n.h=Math.max(24,Math.min(1200,origin.h+dy));
+      if(direction.includes('w')){n.x=Math.max(0,Math.min(origin.x+origin.w-32,origin.x+dx));n.w=origin.x+origin.w-n.x}
+      if(direction.includes('n')){n.y=Math.max(0,Math.min(origin.y+origin.h-24,origin.y+dy));n.h=origin.y+origin.h-n.y}
+    }
+    const el=$(`[data-id="${n.id}"]`);
+    Object.assign(el.style,{left:n.x+'px',top:n.y+'px',width:n.w+'px',height:n.h+'px',fontSize:n.size+'px'});
+    renderResizeBox();renderEdges();
+  };
+  const end=ev=>{
+    if(ev.pointerId!==event.pointerId)return;
+    window.removeEventListener('pointermove',move);window.removeEventListener('pointerup',end);window.removeEventListener('pointercancel',end);
+    if(changed)render();
+  };
+  window.addEventListener('pointermove',move);window.addEventListener('pointerup',end);window.addEventListener('pointercancel',end);
+}
+function nodeDown(e,n){if(e.target.isContentEditable)return;e.stopPropagation();if(tool==='connect'){if(!connectFrom){connectFrom=n.id;selected=n.id;toast('Now click the shape to connect to')}else if(connectFrom!==n.id){if(!board.edges.some(x=>x.from===connectFrom&&x.to===n.id)){checkpoint();board.edges.push({id:crypto.randomUUID(),from:connectFrom,to:n.id})}connectFrom=null;setTool('select')}render();return}selected=n.id;$$('.node').forEach(el=>el.classList.toggle('selected',el.dataset.id===n.id));$('#fontSize').value=n.size;updateButtons();renderResizeBox();renderEdges();let start={x:e.clientX,y:e.clientY,nx:n.x,ny:n.y},moved=false;const move=ev=>{if(!moved){checkpoint();moved=true}n.x=Math.max(0,start.nx+(ev.clientX-start.x)/zoom);n.y=Math.max(0,start.ny+(ev.clientY-start.y)/zoom);let el=$(`[data-id="${n.id}"]`);el.style.left=n.x+'px';el.style.top=n.y+'px';renderResizeBox();renderEdges()};const up=()=>{window.removeEventListener('pointermove',move);window.removeEventListener('pointerup',up)};window.addEventListener('pointermove',move);window.addEventListener('pointerup',up)}
+function editNode(n,el){if(n.type==='emoji')return;checkpoint();el.contentEditable='true';renderResizeBox();el.focus();let range=document.createRange();range.selectNodeContents(el);let selection=getSelection();selection.removeAllRanges();selection.addRange(range);el.addEventListener('blur',()=>{n.text=el.innerText;el.contentEditable='false';render()},{once:true});el.addEventListener('keydown',e=>{e.stopPropagation();if(e.key==='Escape'||(e.key==='Enter'&&!e.shiftKey)){e.preventDefault();el.blur()}})}
+function setTool(t){tool=t;connectFrom=null;$$('[data-tool]').forEach(b=>b.classList.toggle('active',b.dataset.tool===t));$('#hint').textContent=t==='connect'?'Click a shape, then another to connect them':'Select an element and drag its boundary to resize'}
 function add(type,text){checkpoint();let r=$('#viewport').getBoundingClientRect();let x=Math.max(20,(r.width/2-pan.x)/zoom-80),y=Math.max(90,(r.height/2-pan.y)/zoom-30);let config={rect:['Your idea',160,68],circle:['Start',100,100],diamond:['A decision?',150,110],text:['Add your text',220,45],sticky:['A note to remember',170,110],emoji:[text,75,75]}[type];let n=make(type,text||config[0],x+Math.random()*30,y+Math.random()*30,config[1],config[2],type==='sticky'?palette[1]:palette[0],type==='emoji'?52:16);board.nodes.push(n);selected=n.id;setTool('select');render()}
 $$('[data-add]').forEach(b=>b.onclick=()=>add(b.dataset.add));$$('[data-tool]').forEach(b=>b.onclick=()=>setTool(b.dataset.tool));
 for(const color of palette){let b=document.createElement('button');b.className='swatch';b.style.background=color;b.dataset.color=color;b.setAttribute('aria-label','Fill '+color);b.onclick=()=>{let n=selectedNode();if(n){checkpoint();n.color=color;render()}else toast('Select an element to change its color')};$('#colors').append(b)}
 const stickers=['🌳','🌲','🌱','🌿','🌸','☀️','☁️','⭐','🌈','🔥','💡','🎯','🚀','🏡','☕','❤️','😊','🎉','📌','🧠','✅','💬','📚','🦋','🐈'];stickers.forEach(s=>{let b=document.createElement('button');b.textContent=s;b.setAttribute('aria-label','Add '+s);b.onclick=()=>{add('emoji',s);$('#stickerPanel').classList.add('hidden')};$('#stickers').append(b)});$('#stickerButton').onclick=()=>$('#stickerPanel').classList.toggle('hidden');$('#closeStickers').onclick=()=>$('#stickerPanel').classList.add('hidden');
 $('#fontSize').onchange=()=>{let n=selectedNode();if(n){checkpoint();n.size=+$('#fontSize').value;render()}};
-function remove(){if(!selected)return;checkpoint();board.nodes=board.nodes.filter(n=>n.id!==selected);board.edges=board.edges.filter(e=>e.from!==selected&&e.to!==selected);selected=null;render()}
+function remove(){if(!selected)return;checkpoint();board.nodes=board.nodes.filter(n=>n.id!==selected);board.edges=board.edges.filter(e=>e.id!==selected&&e.from!==selected&&e.to!==selected);selected=null;render()}
 $('#delete').onclick=remove;$('#duplicate').onclick=()=>{let n=selectedNode();if(!n)return;checkpoint();let copy={...n,id:crypto.randomUUID(),x:n.x+30,y:n.y+30};board.nodes.push(copy);selected=copy.id;render()};
 $('#undo').onclick=()=>{if(!history.length)return;future.push(JSON.stringify(board));board=JSON.parse(history.pop());selected=null;$('#boardTitle').value=board.title;markDirty();render()};$('#redo').onclick=()=>{if(!future.length)return;history.push(JSON.stringify(board));board=JSON.parse(future.pop());selected=null;$('#boardTitle').value=board.title;markDirty();render()};
-function transform(){$('#world').style.transform=`translate(${pan.x}px,${pan.y}px) scale(${zoom})`;$('#zoomLabel').textContent=Math.round(zoom*100)+'%'}
+function transform(){$('#world').style.transform=`translate(${pan.x}px,${pan.y}px) scale(${zoom})`;$('#zoomLabel').textContent=Math.round(zoom*100)+'%';renderResizeBox();$$('.edge-hit').forEach(el=>el.setAttribute('stroke-width',16/zoom))}
 function zoomTo(z){let r=$('#viewport').getBoundingClientRect(),cx=r.width/2,cy=r.height/2;z=Math.max(.25,Math.min(2,z));pan={x:cx-(cx-pan.x)*z/zoom,y:cy-(cy-pan.y)*z/zoom};zoom=z;transform()}
 $('#zoomIn').onclick=()=>zoomTo(zoom+.1);$('#zoomOut').onclick=()=>zoomTo(zoom-.1);$('#zoomLabel').onclick=()=>{zoom=1;pan={x:0,y:0};transform()};
 function bounds(){if(!board.nodes.length)return {x:0,y:0,w:1000,h:500};let x=Math.min(...board.nodes.map(n=>n.x))-40,y=Math.min(...board.nodes.map(n=>n.y))-40;return {x,y,w:Math.max(...board.nodes.map(n=>n.x+n.w))-x+40,h:Math.max(...board.nodes.map(n=>n.y+n.h))-y+40}}
 function fit(){let b=bounds(),r=$('#viewport').getBoundingClientRect();if(r.width<1||r.height<1)return;zoom=Math.min(1.25,(r.width-50)/b.w,(r.height-120)/b.h);pan={x:(r.width-b.w*zoom)/2-b.x*zoom,y:70+(r.height-120-b.h*zoom)/2-b.y*zoom};transform()}
-$('#fit').onclick=fit;$('#viewport').addEventListener('pointerdown',e=>{if(e.target.closest('button,.tools,.sticker-panel,.zoom,.node'))return;selected=null;render();let start={sx:e.clientX,sy:e.clientY,px:pan.x,py:pan.y};const move=ev=>{pan={x:start.px+ev.clientX-start.sx,y:start.py+ev.clientY-start.sy};transform()};const up=()=>{window.removeEventListener('pointermove',move);window.removeEventListener('pointerup',up)};window.addEventListener('pointermove',move);window.addEventListener('pointerup',up)});
+$('#fit').onclick=fit;$('#viewport').addEventListener('pointerdown',e=>{if(e.target.closest('button,.tools,.sticker-panel,.zoom,.node,#selectionBounds,.edge-hit'))return;selected=null;render();let start={sx:e.clientX,sy:e.clientY,px:pan.x,py:pan.y};const move=ev=>{pan={x:start.px+ev.clientX-start.sx,y:start.py+ev.clientY-start.sy};transform()};const up=()=>{window.removeEventListener('pointermove',move);window.removeEventListener('pointerup',up)};window.addEventListener('pointermove',move);window.addEventListener('pointerup',up)});
 $('#viewport').addEventListener('wheel',e=>{if(e.ctrlKey||e.metaKey){e.preventDefault();zoomTo(zoom-e.deltaY*.002)}},{passive:false});
 $('#boardTitle').addEventListener('change',()=>{checkpoint();board.title=$('#boardTitle').value.trim()||'Untitled diagram';$('#boardTitle').value=board.title;markDirty()});
 function persist(next){try{localStorage.setItem('outline-boards',JSON.stringify(next));boards=next;return true}catch{toast('Could not save: browser storage is unavailable or full. Export your diagram.');return false}}

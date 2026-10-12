@@ -27,6 +27,12 @@ Use the Full screen button in the canvas bar to expand the editor. Save and all 
 
 Creations are saved in localStorage in the current browser on the current device. They are not synced across devices or included in Git. SVG export creates a standalone copy of a diagram.
 
+## Resize elements and remove arrows
+
+Select any icon or shape to show its eight resize handles. Drag a corner or any boundary to resize. Icons scale proportionally. Resizing is undoable and retained when saving a creation.
+
+Click an arrow to select it, then press Delete/Backspace or click Delete arrow in the bottom toolbar. This removes only the relationship; its shapes remain. Undo restores the arrow.
+
 ## Version history
 
 This is a Git repository on `main`, connected to the private source repository provisioned by Sites. The first deployment is preserved as the initial commit. Commit each completed incremental change with a descriptive message. Publish the same committed source through the Sites workflow; do not put repository credentials in files.

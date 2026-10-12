@@ -15,3 +15,19 @@ body.editing-fullscreen .canvas-bar,body.editing-fullscreen .properties{flex-shr
 #fullscreen{margin-left:9px;border:1px solid #dfe5da;border-radius:6px;white-space:nowrap}
 #fullscreen[aria-pressed=true]{background:#e5eddc;color:var(--green)}
 @media(max-width:760px){#fullscreen span{display:none}#fullscreen{font-size:18px;padding:4px 8px;margin-left:4px}body.editing-fullscreen #editor{padding:8px;gap:8px}body.editing-fullscreen #boardTitle{font-size:18px}body.editing-fullscreen #export{display:none}body.editing-fullscreen .button{padding:9px 11px}body.editing-fullscreen .primary span{margin-left:5px}}
+
+/* Selection controls sit outside each shape so clipped diamonds also resize. */
+.node.selected{outline:none}
+.node.selected:after{display:none}
+#selectionBounds{position:absolute;z-index:2;border:1.5px solid #396a51;pointer-events:none}
+.resize-handle{position:absolute;width:var(--handle-size);height:var(--handle-size);padding:0;background:#fff;border:1.5px solid #396a51;border-radius:2px;pointer-events:auto;transform:translate(-50%,-50%);touch-action:none}
+.resize-nw{left:0;top:0;cursor:nwse-resize}.resize-ne{left:100%;top:0;cursor:nesw-resize}.resize-se{left:100%;top:100%;cursor:nwse-resize}.resize-sw{left:0;top:100%;cursor:nesw-resize}
+.resize-n{left:50%;top:0;cursor:ns-resize}.resize-s{left:50%;top:100%;cursor:ns-resize}.resize-e{left:100%;top:50%;cursor:ew-resize}.resize-w{left:0;top:50%;cursor:ew-resize}
+.resize-edge{position:absolute;pointer-events:auto;touch-action:none;transform:translate(-50%,-50%)}
+.resize-edge.resize-n,.resize-edge.resize-s{width:100%;height:var(--edge-hit-size)}
+.resize-edge.resize-e,.resize-edge.resize-w{height:100%;width:var(--edge-hit-size)}
+.edge-hit{fill:none;stroke:transparent;pointer-events:stroke;cursor:pointer}
+.selected-edge{stroke:#285c46;stroke-width:2.5}
+.edge-hit:focus-visible{outline:none;stroke:#285c4640}
+.resize-handle{z-index:1}
+.resize-edge{z-index:0}
