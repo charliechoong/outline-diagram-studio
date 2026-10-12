@@ -31,3 +31,12 @@ body.editing-fullscreen .canvas-bar,body.editing-fullscreen .properties{flex-shr
 .edge-hit:focus-visible{outline:none;stroke:#285c4640}
 .resize-handle{z-index:1}
 .resize-edge{z-index:0}
+
+.node.multi-selected{outline:1.5px solid #396a51;outline-offset:3px}
+#groupBounds{position:absolute;border:1.5px dashed #396a51;pointer-events:none;z-index:2}
+#selectionMarquee{position:absolute;border:1px solid #396a51;background:#396a511a;pointer-events:none;z-index:2}
+.pan-mode,.pan-mode .node{cursor:grab}
+.pan-mode:active,.pan-mode .node:active{cursor:grabbing}
+@media(max-width:760px){.tools button{width:27px}.tools span{margin:0 2px}}
+/* Keep browser focus from scrolling the diagram underneath its fixed tools. */
+.canvas-wrap{overflow:clip}

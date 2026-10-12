@@ -33,6 +33,14 @@ Select any icon or shape to show its eight resize handles. Drag a corner or any 
 
 Click an arrow to select it, then press Delete/Backspace or click Delete arrow in the bottom toolbar. This removes only the relationship; its shapes remain. Undo restores the arrow.
 
+## Select multiple components
+
+Hold Shift (or Command/Ctrl) while clicking to add or remove components from the selection. Drag blank canvas to box-select shapes, icons, and text. Hold Shift while box-selecting to add to an existing selection. Command/Ctrl+A selects every canvas element.
+
+Drag any selected component to move the selected group together. Delete/Backspace or the Delete button removes all selected components and any arrows attached to deleted shapes. Undo restores the entire action. Duplicate copies selected shapes and their internal connections.
+
+Use the Hand tool or hold Space while dragging to pan the canvas.
+
 ## Version history
 
 This is a Git repository on `main`, connected to the private source repository provisioned by Sites. The first deployment is preserved as the initial commit. Commit each completed incremental change with a descriptive message. Publish the same committed source through the Sites workflow; do not put repository credentials in files.
