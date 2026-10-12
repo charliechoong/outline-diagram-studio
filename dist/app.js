@@ -70,3 +70,5 @@ document.addEventListener('fullscreenchange',()=>{
   if(!document.fullscreenElement)setEditorFullscreen(false);
   else if(document.fullscreenElement===$('#editor'))setEditorFullscreen(true);
 });
+// Native fullscreen can resize after its change event; fit to the final canvas size.
+new ResizeObserver(()=>requestAnimationFrame(fit)).observe($('#viewport'));
