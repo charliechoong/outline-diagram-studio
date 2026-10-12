@@ -40,5 +40,33 @@ function svgMarkup(b){let previous=board;board=b;let box=bounds();let paths=b.ed
 $('#export').onclick=()=>{let blob=new Blob([svgMarkup(board)],{type:'image/svg+xml'}),url=URL.createObjectURL(blob),a=document.createElement('a');a.href=url;a.download=(board.title||'diagram').replace(/[^a-z0-9 -]/gi,'')+'.svg';a.click();setTimeout(()=>URL.revokeObjectURL(url),1000);toast('Diagram exported as SVG')};
 function renderGallery(){const query=$('#search').value.toLowerCase();let filtered=boards.filter(b=>b.title.toLowerCase().includes(query));$('#galleryCount').textContent=boards.length+' saved creation'+(boards.length===1?'':'s');$('#boardGrid').replaceChildren();if(!filtered.length){let empty=document.createElement('div');empty.className='empty';empty.innerHTML=`<span>✳</span><h2>${query?'No creations found':'Your next big idea belongs here.'}</h2><p>${query?'Try a different search.':'Save a diagram from the studio and find it here.<br>Your creations are saved in this browser on this device.'}</p>`;$('#boardGrid').append(empty)}filtered.forEach(b=>{let card=document.createElement('article');card.className='board-card';card.tabIndex=0;card.setAttribute('aria-label','Open '+b.title);let preview=document.createElement('div');preview.className='board-preview';preview.innerHTML=svgMarkup(b);card.append(preview);let bottom=document.createElement('div');bottom.className='card-bottom';let title=document.createElement('h3');title.textContent=b.title;bottom.append(title);let meta=document.createElement('div');meta.className='card-meta';meta.innerHTML=`<span>${b.nodes.length} elements · ${new Date(b.updated).toLocaleDateString(undefined,{month:'short',day:'numeric'})}</span>`;let del=document.createElement('button');del.textContent='Delete';del.setAttribute('aria-label','Delete '+b.title);del.onclick=e=>{e.stopPropagation();if(confirm('Delete “'+b.title+'”?')){if(persist(boards.filter(x=>x.id!==b.id))){renderGallery();updateButtons();toast('Creation deleted')}}};meta.append(del);bottom.append(meta);card.append(bottom);const open=()=>{if(board.id!==b.id&&dirty&&history.length&&!confirm('Open this creation? Unsaved changes will be lost.'))return;board=JSON.parse(JSON.stringify(b));dirty=false;selected=null;history=[];future=[];$('#boardTitle').value=board.title;$('#saveState').textContent='Saved on this device';render();location.hash='editor';route();requestAnimationFrame(fit)};card.onclick=open;card.onkeydown=e=>{if(e.key==='Enter'&&e.target===card)open()};$('#boardGrid').append(card)})}
 $('#search').oninput=renderGallery;
-function route(){let gallery=location.hash==='#boards';$('#editor').classList.toggle('hidden',gallery);$('#gallery').classList.toggle('hidden',!gallery);$('#editorLink').classList.toggle('active',!gallery);$('#boardsLink').classList.toggle('active',gallery);$('#pageLabel').textContent=gallery?'My creations':'Diagram studio';if(gallery)renderGallery()}window.addEventListener('hashchange',route);
-window.addEventListener('keydown',e=>{if(e.target.matches('input,select,[contenteditable=true]'))return;if(e.key==='Delete'||e.key==='Backspace'){e.preventDefault();remove()}if((e.metaKey||e.ctrlKey)&&e.key.toLowerCase()==='z'){e.preventDefault();e.shiftKey?$('#redo').click():$('#undo').click()}if((e.metaKey||e.ctrlKey)&&e.key.toLowerCase()==='s'){e.preventDefault();save()}if(e.key==='Escape'){setTool('select');selected=null;render();$('#stickerPanel').classList.add('hidden')}});window.addEventListener('beforeunload',e=>{if(dirty&&history.length){e.preventDefault();e.returnValue=''}});render();route();requestAnimationFrame(fit);
+function route(){let gallery=location.hash==='#boards';if(gallery&&document.body.classList.contains('editing-fullscreen'))exitEditorFullscreen();$('#editor').classList.toggle('hidden',gallery);$('#gallery').classList.toggle('hidden',!gallery);$('#editorLink').classList.toggle('active',!gallery);$('#boardsLink').classList.toggle('active',gallery);$('#pageLabel').textContent=gallery?'My creations':'Diagram studio';if(gallery)renderGallery()}window.addEventListener('hashchange',route);
+window.addEventListener('keydown',e=>{if(e.target.matches('input,select,[contenteditable=true]'))return;if(e.key==='Delete'||e.key==='Backspace'){e.preventDefault();remove()}if((e.metaKey||e.ctrlKey)&&e.key.toLowerCase()==='z'){e.preventDefault();e.shiftKey?$('#redo').click():$('#undo').click()}if((e.metaKey||e.ctrlKey)&&e.key.toLowerCase()==='s'){e.preventDefault();save()}if(e.key==='Escape'){if(document.body.classList.contains('editing-fullscreen'))exitEditorFullscreen();setTool('select');selected=null;render();$('#stickerPanel').classList.add('hidden')}});window.addEventListener('beforeunload',e=>{if(dirty&&history.length){e.preventDefault();e.returnValue=''}});render();route();requestAnimationFrame(fit);
+
+function setEditorFullscreen(active){
+  document.body.classList.toggle('editing-fullscreen',active);
+  const button=$('#fullscreen');
+  button.setAttribute('aria-pressed',String(active));
+  button.setAttribute('aria-label',active?'Exit full screen':'Enter full screen');
+  button.title=active?'Exit full screen (Esc)':'Enter full screen';
+  button.querySelector('span').textContent=active?'Exit full screen':'Full screen';
+  requestAnimationFrame(fit);
+}
+async function exitEditorFullscreen(){
+  setEditorFullscreen(false);
+  if(document.fullscreenElement=== $('#editor')){
+    try{await document.exitFullscreen()}catch{}
+  }
+}
+$('#fullscreen').onclick=async()=>{
+  if(document.body.classList.contains('editing-fullscreen')){await exitEditorFullscreen();return}
+  setEditorFullscreen(true);
+  const editor=$('#editor');
+  if(document.fullscreenEnabled&&editor.requestFullscreen){
+    try{await editor.requestFullscreen()}catch{/* The expanded editor still works in embedded browsers. */}
+  }
+};
+document.addEventListener('fullscreenchange',()=>{
+  if(!document.fullscreenElement)setEditorFullscreen(false);
+  else if(document.fullscreenElement===$('#editor'))setEditorFullscreen(true);
+});
