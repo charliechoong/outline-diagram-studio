@@ -25,7 +25,7 @@ Open http://127.0.0.1:4173. Check JavaScript syntax with `node --check dist/app.
 
 Use the Full screen button in the canvas bar to expand the editor. Save and all editing tools remain available. Use Exit full screen or Escape to return. In embedded browsers without native fullscreen, the editor expands to fill its browser panel.
 
-Creations are saved in localStorage in the current browser on the current device. They are not synced across devices or included in Git. SVG export creates a standalone copy of a diagram.
+Edits autosave after a short pause, with a recovery snapshot written as changes happen. The last active board is restored when reopening the app. Creations are saved in localStorage in the current browser on the current device. They are not synced across devices or included in Git. SVG export creates a standalone copy of a diagram.
 
 ## Resize elements and remove arrows
 
@@ -41,8 +41,14 @@ Drag any selected component to move the selected group together. Delete/Backspac
 
 Use the Hand tool or hold Space while dragging to pan the canvas.
 
+## Arrange and group
+
+Snap is enabled by default for dragging. Toggle Snap or hold Alt while dragging to bypass snapping. Nearby components show alignment guides. Arrange provides six alignment options and equal horizontal/vertical spacing.
+
+Select two or more components and choose Arrange > Group to keep them together across deselection and reopening. Shift-click toggles a whole group; Alt-click selects an individual member for editing. Arrange > Ungroup separates a group. Alignment treats each group as a single item.
+
 ## Version history
 
 This is a Git repository on `main`, connected to the private source repository provisioned by Sites. The first deployment is preserved as the initial commit. Commit each completed incremental change with a descriptive message. Publish the same committed source through the Sites workflow; do not put repository credentials in files.
 
-Private app: https://outline-diagram-studio.choongjinyao295489.chatgpt.site
+App: https://outline-diagram-studio.choongjinyao295489.chatgpt.site

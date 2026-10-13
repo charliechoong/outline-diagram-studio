@@ -40,3 +40,13 @@ body.editing-fullscreen .canvas-bar,body.editing-fullscreen .properties{flex-shr
 @media(max-width:760px){.tools button{width:27px}.tools span{margin:0 2px}}
 /* Keep browser focus from scrolling the diagram underneath its fixed tools. */
 .canvas-wrap{overflow:clip}
+
+#snap,#arrange{font-size:11px;border:1px solid #dfe5da;border-radius:6px;margin:0 3px;white-space:nowrap}
+#snap[aria-pressed=true]{background:#e5eddc;color:var(--green)}
+.arrange-panel{position:absolute;right:18px;top:16px;width:280px;padding:18px;background:#fff;border:1px solid var(--line);border-radius:10px;box-shadow:0 8px 25px #243a3020;z-index:6;font-size:12px;touch-action:manipulation}
+.panel-heading{display:flex;align-items:center;justify-content:space-between;margin-bottom:14px}.panel-heading button{border:0;background:none;font-size:20px}
+.arrange-panel p{font-size:9px;letter-spacing:1.3px;color:#879580;margin:16px 0 8px}.arrange-panel small{display:block;color:#92998d;font-size:10px;line-height:1.6;margin-top:14px}
+.group-actions{display:grid;grid-template-columns:1fr 1fr;gap:7px}.align-actions{display:grid;grid-template-columns:repeat(3,1fr);gap:7px}
+.arrange-panel button:not(#closeArrange){border:1px solid #dfe5da;border-radius:5px;background:#f8faf5;padding:9px 5px;font-size:11px}
+.alignment-guide{position:absolute;pointer-events:none;z-index:2}.alignment-guide.x{height:1600px;top:0;border-left:1px dashed #829bca}.alignment-guide.y{width:2400px;left:0;border-top:1px dashed #829bca}
+@media(max-width:760px){.canvas-bar{padding:0 7px;font-size:10px}.canvas-bar .bar-divider{display:none}.canvas-bar #newBoard{font-size:0;padding:5px}.canvas-bar #newBoard:before{content:'＋';font-size:17px}.canvas-bar #snap,.canvas-bar #arrange{font-size:9px;padding:5px;margin:0 2px}#saveState{max-width:108px;overflow:hidden;white-space:nowrap;text-overflow:ellipsis}.arrange-panel{width:260px;right:8px}}
