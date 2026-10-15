@@ -1,0 +1,10 @@
+#!/bin/sh
+# Push each completed commit to the explicit GitHub remote; never force-push.
+branch=$(git symbolic-ref --quiet --short HEAD) || exit 0
+if ! git remote get-url github >/dev/null 2>&1; then
+  echo 'Automatic push skipped: the github remote is missing.' >&2
+  exit 0
+fi
+if ! git push --set-upstream github "$branch"; then
+  echo 'Automatic GitHub push failed. Your commit is saved locally; retry with git push github HEAD.' >&2
+fi

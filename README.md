@@ -64,3 +64,15 @@ Use Edit to change a creation, then Done · View to return to viewing. The viewi
 This is a Git repository on `main`, connected to the private source repository provisioned by Sites. The first deployment is preserved as the initial commit. Commit each completed incremental change with a descriptive message. Publish the same committed source through the Sites workflow; do not put repository credentials in files.
 
 App: https://outline-diagram-studio.choongjinyao295489.chatgpt.site
+
+### Automatic GitHub pushes
+
+This checkout pushes to the `github` remote after each commit. Changes are verified and committed as completed updates; individual keystrokes are not committed.
+
+To enable the same behavior in a fresh clone, run:
+
+```sh
+sh scripts/enable-auto-push.sh
+```
+
+The hook uses a normal push with no force. If the push fails, the commit remains local and the hook prints a retry command. To disable automatic pushes, run `git config --local --unset core.hooksPath`.
