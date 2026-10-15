@@ -97,3 +97,7 @@ body.viewing-creation{background:#f7f8f3}body.viewing-creation>.sidebar,body.vie
 .sticker-panel #stickers button{font-size:27px;min-height:43px;padding:5px;cursor:pointer}
 .sticker-panel button:focus-visible{outline:2px solid #285c46;outline-offset:-2px}
 #iconEmpty{padding:12px 0}
+
+/* Save feedback stays above the expanded editor, including storage errors. */
+#toast{z-index:200}
+body.editing-fullscreen #toast{left:50%;width:max-content;max-width:90%}

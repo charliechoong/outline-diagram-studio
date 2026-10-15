@@ -7,7 +7,7 @@ let board={id:crypto.randomUUID(),title:'A little room to grow',nodes:[],edges:[
 const make=(type,text,x,y,w=160,h=68,color=palette[0],size=16)=>({id:crypto.randomUUID(),type,text,x,y,w,h,color,size});
 board.nodes=[make('text','Good things start with a little idea.',295,97,490,40,'#ffffff',24),make('text','A plan for something worth growing',380,143,330,30,'#ffffff',14),make('rect','🌱  A little idea',412,209,210,66),make('rect','Explore the possibilities',156,337,205,64,'#f8efc9'),make('rect','Make a plan',414,337,205,64,'#e6e7f7'),make('rect','Bring it to life',672,337,205,64,'#f8e4da'),make('sticky','Stay curious.\nLeave room for surprises.',865,163,170,113,'#f8efc9',16),make('emoji','🌳',41,225,75,85,'#ffffff',58)];
 board.edges=[1,2,3].map((_,i)=>({id:crypto.randomUUID(),from:board.nodes[2].id,to:board.nodes[3+i].id}));
-function toast(t){$('#toast').textContent=t;$('#toast').style.opacity=1;clearTimeout(toast.timer);toast.timer=setTimeout(()=>$('#toast').style.opacity=0,2600)}
+function toast(t){(document.fullscreenElement||document.body).append($('#toast'));$('#toast').textContent=t;$('#toast').style.opacity=1;clearTimeout(toast.timer);toast.timer=setTimeout(()=>$('#toast').style.opacity=0,2600)}
 let autosaveTimer=null,snapEnabled=true;
 try{snapEnabled=localStorage.getItem('outline-snap')!=='false'}catch{}
 function checkpoint(){history.push(JSON.stringify(board));if(history.length>70)history.shift();future=[];markDirty()}
@@ -312,7 +312,11 @@ function save(automatic=false){
   if(persist(next)){dirty=false;writeActiveBoard();$('#saveState').textContent='Saved · Autosave on';updateButtons();if(!automatic)toast('Creation saved to My creations');return true}
   $('#saveState').textContent='Could not save · Export a copy';writeActiveBoard();return false;
 }
-$('#save').onclick=()=>save();
+$('#save').onclick=async()=>{
+  if(!save())return;
+  if(document.body.classList.contains('editing-fullscreen'))await exitEditorFullscreen();
+  toast('Creation saved to My creations');
+};
 function newBoard(){
   if(dirty&&!save(true)){toast('Save failed. Export your current diagram before starting a new one.');return}
   clearTimeout(autosaveTimer);board={id:crypto.randomUUID(),title:'Untitled diagram',nodes:[],edges:[]};dirty=false;
@@ -381,7 +385,7 @@ function route(){
 }
 function historyReplaceView(id){window.history.replaceState(null,'','#view/'+encodeURIComponent(id))}
 window.addEventListener('hashchange',route);
-window.addEventListener('keydown',e=>{if(e.target.matches('input,textarea,select,[contenteditable=true]')||$('#editor').classList.contains('hidden'))return;if(e.key==='Delete'||e.key==='Backspace'){e.preventDefault();remove()}if((e.metaKey||e.ctrlKey)&&e.key.toLowerCase()==='z'){e.preventDefault();e.shiftKey?$('#redo').click():$('#undo').click()}if((e.metaKey||e.ctrlKey)&&e.key.toLowerCase()==='s'){e.preventDefault();save()}if(e.key==='Escape'){if(document.body.classList.contains('editing-fullscreen'))exitEditorFullscreen();setTool('select');selected.clear();render();$('#stickerPanel').classList.add('hidden');closeArrange()}});window.addEventListener('beforeunload',e=>{writeActiveBoard();if(dirty&&!save(true)){e.preventDefault();e.returnValue=''}});initializeBoard();render();route();requestAnimationFrame(fit);
+window.addEventListener('keydown',e=>{if(e.target.matches('input,textarea,select,[contenteditable=true]')||$('#editor').classList.contains('hidden'))return;if(e.key==='Delete'||e.key==='Backspace'){e.preventDefault();remove()}if((e.metaKey||e.ctrlKey)&&e.key.toLowerCase()==='z'){e.preventDefault();e.shiftKey?$('#redo').click():$('#undo').click()}if((e.metaKey||e.ctrlKey)&&e.key.toLowerCase()==='s'){e.preventDefault();$('#save').click()}if(e.key==='Escape'){if(document.body.classList.contains('editing-fullscreen'))exitEditorFullscreen();setTool('select');selected.clear();render();$('#stickerPanel').classList.add('hidden');closeArrange()}});window.addEventListener('beforeunload',e=>{writeActiveBoard();if(dirty&&!save(true)){e.preventDefault();e.returnValue=''}});initializeBoard();render();route();requestAnimationFrame(fit);
 
 function setEditorFullscreen(active){
   document.body.classList.toggle('editing-fullscreen',active);
