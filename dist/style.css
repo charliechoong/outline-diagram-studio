@@ -80,3 +80,20 @@ body.viewing-creation{background:#f7f8f3}body.viewing-creation>.sidebar,body.vie
 .readonly-world .planner-read-text{flex:0 0 auto;min-height:1.5em;overflow:visible;overflow-wrap:anywhere}
 
 .readonly-node-text{display:block;flex:none;width:100%;min-width:0;white-space:pre-wrap;overflow-wrap:anywhere;line-height:inherit}
+
+/* Searchable icon library */
+.sticker-panel{width:min(370px,calc(100% - 36px));padding:18px;max-height:calc(100% - 100px);display:flex;flex-direction:column;gap:12px;overflow:hidden}
+.sticker-panel.hidden{display:none}
+.sticker-panel>div:first-child{align-items:center;flex-shrink:0}
+.sticker-panel>div:first-child button{font-size:23px;color:#697c69;cursor:pointer}
+.sticker-panel p{margin:0;font-size:12px;line-height:1.5}
+#iconSearch{width:100%;min-height:40px;border:1px solid var(--line);border-radius:8px;padding:10px 12px;font:inherit;font-size:12px;background:#fafbf7;color:var(--ink);flex-shrink:0}
+#iconSearch:focus{outline:2px solid #779c70;outline-offset:1px}
+#iconCategories{display:flex;flex-wrap:wrap;gap:5px;flex-shrink:0}
+#iconCategories button{padding:6px 9px;border-radius:20px;font-size:11px;color:#657564;background:#f2f4ed;cursor:pointer}
+#iconCategories button[aria-pressed="true"]{background:#285c46;color:white}
+#iconResults{font-size:11px;color:#839078;flex-shrink:0}
+.sticker-panel #stickers{grid-template-columns:repeat(6,minmax(0,1fr));gap:5px;overflow-y:auto;min-height:0;overscroll-behavior:contain;padding:2px 3px 4px}
+.sticker-panel #stickers button{font-size:27px;min-height:43px;padding:5px;cursor:pointer}
+.sticker-panel button:focus-visible{outline:2px solid #285c46;outline-offset:-2px}
+#iconEmpty{padding:12px 0}
