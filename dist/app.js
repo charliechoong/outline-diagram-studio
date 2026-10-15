@@ -1,6 +1,7 @@
 const $=s=>document.querySelector(s), $$=s=>[...document.querySelectorAll(s)];
 const palette=['#e9f1df','#f8efc9','#f8e4da','#e6e7f7','#dfeef3','#ffffff'];
 let galleryPinnedOnly=false;
+let viewZoom=1,viewPan={x:0,y:0};
 let boards=[];try{boards=JSON.parse(localStorage.getItem('outline-boards')||'[]')}catch{}
 let board={id:crypto.randomUUID(),title:'A little room to grow',nodes:[],edges:[]},selected=new Set(),tool='select',connectFrom=null,zoom=1,pan={x:0,y:0},history=[],future=[],dirty=true;
 const make=(type,text,x,y,w=160,h=68,color=palette[0],size=16)=>({id:crypto.randomUUID(),type,text,x,y,w,h,color,size});
@@ -317,13 +318,35 @@ function renderGallery(){
     const del=document.createElement('button');del.textContent='Delete';del.setAttribute('aria-label','Delete '+b.title);
     del.onclick=event=>{event.stopPropagation();if(confirm('Delete “'+b.title+'”?')&&persist(boards.filter(x=>x.id!==b.id))){if(board.id===b.id){clearTimeout(autosaveTimer);board={id:crypto.randomUUID(),title:'Untitled diagram',nodes:[],edges:[]};dirty=false;selected.clear();history=[];future=[];$('#boardTitle').value=board.title;writeActiveBoard()}renderGallery();updateButtons();toast('Creation deleted')}};
     actions.append(del);meta.append(actions);bottom.append(meta);card.append(bottom);
-    const open=()=>{if(board.id!==b.id&&dirty&&!save(true))return;clearTimeout(autosaveTimer);board=JSON.parse(JSON.stringify(b));dirty=false;selected.clear();history=[];future=[];$('#boardTitle').value=board.title;$('#saveState').textContent='Saved · Autosave on';writeActiveBoard();render();location.hash='editor';route();requestAnimationFrame(fit)};
+    const open=()=>openCreation(b.id);
     card.onclick=open;card.onkeydown=event=>{if(event.key==='Enter'&&event.target===card)open()};$('#boardGrid').append(card);
   });
 }
 $('#allCreations').onclick=()=>{galleryPinnedOnly=false;renderGallery()};$('#pinnedCreations').onclick=()=>{galleryPinnedOnly=true;renderGallery()};
 $('#search').oninput=renderGallery;
-function route(){let gallery=location.hash==='#boards';if(gallery&&document.body.classList.contains('editing-fullscreen'))exitEditorFullscreen();$('#editor').classList.toggle('hidden',gallery);$('#gallery').classList.toggle('hidden',!gallery);$('#editorLink').classList.toggle('active',!gallery);$('#boardsLink').classList.toggle('active',gallery);$('#pageLabel').textContent=gallery?'My creations':'Diagram studio';if(gallery){if(dirty)save(true);renderGallery()}}window.addEventListener('hashchange',route);
+function openCreation(id){
+  if(dirty&&!save(true))return;
+  location.hash='view/'+encodeURIComponent(id);route();
+}
+function route(){
+  if(!location.hash&&boards.some(b=>b.id===board.id))historyReplaceView(board.id);
+  const gallery=location.hash==='#boards',viewing=location.hash.startsWith('#view/');
+  if((gallery||viewing)&&document.body.classList.contains('editing-fullscreen'))exitEditorFullscreen();
+  if((gallery||viewing)&&dirty)save(true);
+  document.body.classList.toggle('viewing-creation',viewing);
+  $('#editor').classList.toggle('hidden',gallery||viewing);$('#gallery').classList.toggle('hidden',!gallery);$('#viewer').classList.toggle('hidden',!viewing);
+  $('#editorLink').classList.toggle('active',!gallery&&!viewing);$('#boardsLink').classList.toggle('active',gallery);$('#pageLabel').textContent=gallery?'My creations':'Diagram studio';
+  if(gallery){document.title='My creations — Outline';renderGallery()}
+  else if(viewing){
+    let id='';try{id=decodeURIComponent(location.hash.slice(6))}catch{}
+    const saved=boards.find(b=>b.id===id);
+    if(!saved){renderMissingView();return}
+    if(board.id!==id){board=JSON.parse(JSON.stringify(saved));dirty=false;selected.clear();history=[];future=[];$('#boardTitle').value=board.title;writeActiveBoard();render()}
+    selected.clear();renderResizeBox();renderViewer();requestAnimationFrame(()=>window.scrollTo(0,0));
+  }else{document.title='Outline — Diagram studio';render();requestAnimationFrame(fit)}
+}
+function historyReplaceView(id){window.history.replaceState(null,'','#view/'+encodeURIComponent(id))}
+window.addEventListener('hashchange',route);
 window.addEventListener('keydown',e=>{if(e.target.matches('input,textarea,select,[contenteditable=true]')||$('#editor').classList.contains('hidden'))return;if(e.key==='Delete'||e.key==='Backspace'){e.preventDefault();remove()}if((e.metaKey||e.ctrlKey)&&e.key.toLowerCase()==='z'){e.preventDefault();e.shiftKey?$('#redo').click():$('#undo').click()}if((e.metaKey||e.ctrlKey)&&e.key.toLowerCase()==='s'){e.preventDefault();save()}if(e.key==='Escape'){if(document.body.classList.contains('editing-fullscreen'))exitEditorFullscreen();setTool('select');selected.clear();render();$('#stickerPanel').classList.add('hidden');closeArrange()}});window.addEventListener('beforeunload',e=>{writeActiveBoard();if(dirty&&!save(true)){e.preventDefault();e.returnValue=''}});initializeBoard();render();route();requestAnimationFrame(fit);
 
 function setEditorFullscreen(active){
@@ -410,3 +433,64 @@ function plannerSvg(n){
   }
   return result;
 }
+
+function renderMissingView(){
+  $('#viewTitle').textContent='Creation not found';$('#viewPinned').classList.add('hidden');$('#editCreation').disabled=true;
+  $('#viewEyebrow').textContent='YOUR CREATIONS';$('#viewContent').replaceChildren();
+  const message=document.createElement('p');message.className='view-missing';message.textContent='This creation is not saved in this browser. Return to My creations to choose another.';$('#viewContent').append(message);updateViewDate();
+}
+function updateViewDate(){const now=new Date();$('#viewDate').dateTime=now.toISOString();$('#viewDate').textContent=now.toLocaleDateString(undefined,{weekday:'long',month:'long',day:'numeric'})}
+function renderViewer(){
+  const plannersOnly=board.nodes.length>0&&board.nodes.every(n=>n.type==='planner')&&!board.edges.length;
+  document.title=board.title+' — Outline';$('#editCreation').disabled=false;$('#viewTitle').textContent=board.title;$('#viewEyebrow').textContent=plannersOnly?'YOUR DAILY SPACE':'YOUR BIGGER PICTURE';$('#viewPinned').classList.toggle('hidden',!board.pinned);updateViewDate();
+  const content=$('#viewContent');content.replaceChildren();
+  if(!board.nodes.length){const empty=document.createElement('div');empty.className='view-missing';empty.textContent='A little space for your next idea. Choose Edit to add something.';content.append(empty);return}
+  if(plannersOnly){
+    for(const n of board.nodes){
+      const planner=document.createElement('article');planner.className='reminder-planner';
+      const heading=document.createElement('h2');heading.textContent=n.text||'My daily routine';planner.append(heading);
+      const periods=document.createElement('div');periods.className='reminder-periods';
+      for(const [key,label,icon] of [['morning','Morning','🌅'],['afternoon','Afternoon','☀️'],['night','Night','🌙']]){
+        const section=document.createElement('section');section.className='reminder-period '+key;
+        const iconEl=document.createElement('span');iconEl.className='period-icon';iconEl.textContent=icon;iconEl.setAttribute('aria-hidden','true');section.append(iconEl);
+        const title=document.createElement('h3');title.textContent=label;section.append(title);
+        const lines=(n.sections?.[key]||'').split('\n').filter(line=>line.trim());
+        if(lines.length){const list=document.createElement('ul');lines.forEach(line=>{const item=document.createElement('li');item.textContent=line.replace(/^\s*[•*−–-]\s*/,'');list.append(item)});section.append(list)}
+        else{const empty=document.createElement('p');empty.className='period-empty';empty.textContent='A little breathing room.';section.append(empty)}
+        periods.append(section);
+      }
+      planner.append(periods);content.append(planner);
+    }
+    return;
+  }
+  const stage=document.createElement('div');stage.id='viewCanvas';stage.className='view-canvas';stage.setAttribute('aria-label','Read-only diagram');
+  const world=document.createElement('div');world.id='viewWorld';world.className='readonly-world';
+  const edges=document.createElementNS('http://www.w3.org/2000/svg','svg');edges.setAttribute('width','2400');edges.setAttribute('height','1600');edges.classList.add('view-edges');
+  edges.innerHTML='<defs><marker id="viewArrow" viewBox="0 0 10 10" refX="9" refY="5" markerWidth="6" markerHeight="6" orient="auto"><path d="M0 0L10 5L0 10z" fill="#8c9690"/></marker></defs>';
+  board.edges.forEach(edge=>{const path=document.createElementNS('http://www.w3.org/2000/svg','path');path.setAttribute('d',edgePath(edge));path.setAttribute('fill','none');path.setAttribute('stroke','#8c9690');path.setAttribute('stroke-width','1.6');path.setAttribute('marker-end','url(#viewArrow)');edges.append(path)});world.append(edges);
+  board.nodes.forEach(n=>{
+    const el=document.createElement('div');el.className='node '+n.type;Object.assign(el.style,{left:n.x+'px',top:n.y+'px',width:n.w+'px',height:n.h+'px',background:n.color,fontSize:n.size+'px'});
+    if(n.type==='planner'){
+      const heading=document.createElement('div');heading.className='planner-heading';heading.textContent=n.text;el.append(heading);
+      for(const key of ['morning','afternoon','night']){const part=document.createElement('div');part.className='planner-section '+key;const title=document.createElement('strong');title.textContent=key[0].toUpperCase()+key.slice(1);part.append(title);const text=document.createElement('div');text.className='planner-read-text';text.textContent=n.sections?.[key]||'';part.append(text);el.append(part)}
+    }else el.textContent=n.text;
+    world.append(el);
+  });
+  stage.append(world);const controls=document.createElement('div');controls.className='view-zoom';
+  for(const [label,text,action] of [['Zoom out diagram','−',()=>zoomView(viewZoom/1.2)],['Fit diagram','Fit',fitView],['Zoom in diagram','+',()=>zoomView(viewZoom*1.2)]]){const button=document.createElement('button');button.setAttribute('aria-label',label);button.textContent=text;button.onclick=action;controls.append(button)}
+  stage.append(controls);content.append(stage);requestAnimationFrame(fitView);
+  stage.addEventListener('pointerdown',event=>{
+    if(event.button!==0||event.target.closest('button,.planner-read-text'))return;
+    const start={x:event.clientX,y:event.clientY,px:viewPan.x,py:viewPan.y};let moved=false;
+    const move=e=>{if(e.pointerId!==event.pointerId)return;if(Math.abs(e.clientX-start.x)+Math.abs(e.clientY-start.y)<3&&!moved)return;moved=true;viewPan={x:start.px+e.clientX-start.x,y:start.py+e.clientY-start.y};transformView()};
+    const end=e=>{if(e.pointerId!==event.pointerId)return;window.removeEventListener('pointermove',move);window.removeEventListener('pointerup',end);window.removeEventListener('pointercancel',end)};
+    window.addEventListener('pointermove',move);window.addEventListener('pointerup',end);window.addEventListener('pointercancel',end);
+  });
+}
+function transformView(){const world=$('#viewWorld');if(world)world.style.transform=`translate(${viewPan.x}px,${viewPan.y}px) scale(${viewZoom})`}
+function fitView(){const stage=$('#viewCanvas');if(!stage||$('#viewer').classList.contains('hidden'))return;const rect=stage.getBoundingClientRect(),b=bounds();viewZoom=Math.max(.1,Math.min(1.4,(rect.width-50)/b.w,(rect.height-70)/b.h));viewPan={x:(rect.width-b.w*viewZoom)/2-b.x*viewZoom,y:(rect.height-b.h*viewZoom)/2-b.y*viewZoom};transformView()}
+function zoomView(value){const rect=$('#viewCanvas').getBoundingClientRect(),z=Math.max(.1,Math.min(3,value));viewPan={x:rect.width/2-(rect.width/2-viewPan.x)*z/viewZoom,y:rect.height/2-(rect.height/2-viewPan.y)*z/viewZoom};viewZoom=z;transformView()}
+$('#editCreation').onclick=()=>{location.hash='editor';route();setEditorFullscreen(true)};
+$('#doneEditing').onclick=()=>{if(save(true))openCreation(board.id)};
+window.addEventListener('resize',()=>requestAnimationFrame(fitView));
+setInterval(()=>{if(document.body.classList.contains('viewing-creation'))updateViewDate()},60000);

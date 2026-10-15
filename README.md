@@ -53,6 +53,12 @@ In My creations, click Pin on a card to keep it at the top. The Pinned filter sh
 
 Use Add daily planner in the floating toolbar for a structured card with an editable title and separate Morning, Afternoon, and Night task lists. Type one task per line. Entries autosave, can be undone, and appear in gallery previews and SVG exports. Drag the card by its grip or outer boundary; resize it with the standard selection handles.
 
+## Daily viewing mode
+
+Opening a creation from My creations now opens a full-page, read-only page. Planner-only creations display as spacious Morning, Afternoon, and Night columns with all entries visible. Other diagrams retain their canvas layout with viewing zoom and pan controls.
+
+Use Edit to change a creation, then Done · View to return to viewing. The viewing URL can be bookmarked in the same browser where the creation is stored. Reopening the app without a route restores the last saved creation in viewing mode. No data is uploaded or made shareable by the viewing URL.
+
 ## Version history
 
 This is a Git repository on `main`, connected to the private source repository provisioned by Sites. The first deployment is preserved as the initial commit. Commit each completed incremental change with a descriptive message. Publish the same committed source through the Sites workflow; do not put repository credentials in files.
