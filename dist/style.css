@@ -78,3 +78,5 @@ body.viewing-creation{background:#f7f8f3}body.viewing-creation>.sidebar,body.vie
 .readonly-world .node.planner{justify-content:flex-start}
 .readonly-world .planner-section{flex:1 0 auto;min-height:72px}
 .readonly-world .planner-read-text{flex:0 0 auto;min-height:1.5em;overflow:visible;overflow-wrap:anywhere}
+
+.readonly-node-text{display:block;flex:none;width:100%;min-width:0;white-space:pre-wrap;overflow-wrap:anywhere;line-height:inherit}

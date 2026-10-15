@@ -475,12 +475,17 @@ function renderViewer(){
       el.style.height='auto';el.style.minHeight=n.h+'px';
       const heading=document.createElement('div');heading.className='planner-heading';heading.textContent=n.text;el.append(heading);
       for(const key of ['morning','afternoon','night']){const part=document.createElement('div');part.className='planner-section '+key;const title=document.createElement('strong');title.textContent=key[0].toUpperCase()+key.slice(1);part.append(title);const text=document.createElement('div');text.className='planner-read-text';text.textContent=n.sections?.[key]||'';part.append(text);el.append(part)}
-    }else el.textContent=n.text;
+    }else if(n.type==='emoji')el.textContent=n.text;
+    else{
+      el.style.height='auto';el.style.minHeight=n.h+'px';
+      const text=document.createElement('span');text.className='readonly-node-text';text.textContent=n.text;el.append(text);
+      if(n.type==='diamond'||n.type==='circle'){const padding=n.w*(n.type==='diamond'?.25:.2);el.style.paddingLeft=padding+'px';el.style.paddingRight=padding+'px'}
+    }
     world.append(el);
   });
   stage.append(world);const controls=document.createElement('div');controls.className='view-zoom';
   for(const [label,text,action] of [['Zoom out diagram','−',()=>zoomView(viewZoom/1.2)],['Fit diagram','Fit',fitView],['Zoom in diagram','+',()=>zoomView(viewZoom*1.2)]]){const button=document.createElement('button');button.setAttribute('aria-label',label);button.textContent=text;button.onclick=action;controls.append(button)}
-  content.append(stage);content.append(controls);requestAnimationFrame(()=>{expandViewPlanners();fitView()});
+  content.append(stage);content.append(controls);requestAnimationFrame(()=>{expandViewContent();fitView()});
   stage.addEventListener('pointerdown',event=>{
     if(event.button!==0||event.pointerType==='touch'||event.target.closest('button,.planner-read-text'))return;
     const start={x:event.clientX,y:event.clientY,px:viewPan.x,py:viewPan.y};let moved=false;
@@ -508,13 +513,19 @@ function viewBounds(){
   const x=Math.min(...viewNodes.map(n=>n.x))-40,y=Math.min(...viewNodes.map(n=>n.y))-40;
   return {x,y,w:Math.max(...viewNodes.map(n=>n.x+n.w))-x+40,h:Math.max(...viewNodes.map(n=>n.y+n.h))-y+40};
 }
-function expandViewPlanners(){
+function expandViewContent(){
   const world=$('#viewWorld');if(!world)return;
   const savedHeights=new Map(viewNodes.map(n=>[n.id,n.h]));
-  for(const n of viewNodes){if(n.type==='planner'){const el=world.querySelector(`[data-view-node="${n.id}"]`);if(el)n.h=Math.max(n.h,el.offsetHeight)}}
-  // Expanded reading cards push lower items down without changing saved canvas data.
-  const planners=viewNodes.filter(n=>n.type==='planner').sort((a,b)=>a.y-b.y);
-  for(const p of planners){const oldHeight=savedHeights.get(p.id),growth=p.h-oldHeight;if(growth<=0)continue;
+  for(const n of viewNodes){
+    if(n.type==='emoji')continue;
+    const el=world.querySelector(`[data-view-node="${n.id}"]`);if(!el)continue;
+    n.h=Math.max(n.h,el.offsetHeight);
+    if(n.type==='diamond'||n.type==='circle'){const text=el.querySelector('.readonly-node-text');if(text)n.h=Math.max(n.h,Math.ceil(text.offsetHeight*(n.type==='diamond'?2:1.6)+32))}
+    el.style.height=n.h+'px';
+  }
+  // Expanded text components push lower items down only in the reading layout.
+  const expandingNodes=viewNodes.filter(n=>n.type!=='emoji').sort((a,b)=>a.y-b.y);
+  for(const p of expandingNodes){const oldHeight=savedHeights.get(p.id),growth=p.h-oldHeight;if(growth<=0)continue;
     for(const n of viewNodes){if(n.id!==p.id&&n.y>=p.y+oldHeight-1&&n.x<p.x+p.w&&n.x+n.w>p.x)n.y+=growth}
   }
   for(const n of viewNodes){const el=world.querySelector(`[data-view-node="${n.id}"]`);if(el)el.style.top=n.y+'px'}

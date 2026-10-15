@@ -57,7 +57,7 @@ Use Add daily planner in the floating toolbar for a structured card with an edit
 
 Opening a creation from My creations now opens a full-page, read-only page. Planner-only creations display as spacious Morning, Afternoon, and Night columns with all entries visible. Other diagrams retain their layout directly on the page, without a framed canvas. The page height follows the content, with discreet zoom controls below the creation and normal page scrolling.
 
-Use Edit to change a creation, then Done · View to return to viewing. The viewing URL can be bookmarked in the same browser where the creation is stored. Reopening the app without a route restores the last saved creation in viewing mode. Planner sections in mixed diagrams expand to show all text in viewing mode. Lower items in the same column move down for reading, with connectors following their displayed positions; the saved editing layout is preserved. No data is uploaded or made shareable by the viewing URL.
+Use Edit to change a creation, then Done · View to return to viewing. The viewing URL can be bookmarked in the same browser where the creation is stored. Reopening the app without a route restores the last saved creation in viewing mode. All text components expand to show their full content in viewing mode: planner sections, regular shapes, circles, diamonds, sticky notes, and text boxes. Lower items in the same column move down for reading, with connectors following their displayed positions; the saved editing layout is preserved. No data is uploaded or made shareable by the viewing URL.
 
 ## Version history
 
