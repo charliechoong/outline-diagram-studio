@@ -478,9 +478,9 @@ function renderViewer(){
   });
   stage.append(world);const controls=document.createElement('div');controls.className='view-zoom';
   for(const [label,text,action] of [['Zoom out diagram','−',()=>zoomView(viewZoom/1.2)],['Fit diagram','Fit',fitView],['Zoom in diagram','+',()=>zoomView(viewZoom*1.2)]]){const button=document.createElement('button');button.setAttribute('aria-label',label);button.textContent=text;button.onclick=action;controls.append(button)}
-  stage.append(controls);content.append(stage);requestAnimationFrame(fitView);
+  content.append(stage);content.append(controls);requestAnimationFrame(fitView);
   stage.addEventListener('pointerdown',event=>{
-    if(event.button!==0||event.target.closest('button,.planner-read-text'))return;
+    if(event.button!==0||event.pointerType==='touch'||event.target.closest('button,.planner-read-text'))return;
     const start={x:event.clientX,y:event.clientY,px:viewPan.x,py:viewPan.y};let moved=false;
     const move=e=>{if(e.pointerId!==event.pointerId)return;if(Math.abs(e.clientX-start.x)+Math.abs(e.clientY-start.y)<3&&!moved)return;moved=true;viewPan={x:start.px+e.clientX-start.x,y:start.py+e.clientY-start.y};transformView()};
     const end=e=>{if(e.pointerId!==event.pointerId)return;window.removeEventListener('pointermove',move);window.removeEventListener('pointerup',end);window.removeEventListener('pointercancel',end)};
@@ -488,8 +488,14 @@ function renderViewer(){
   });
 }
 function transformView(){const world=$('#viewWorld');if(world)world.style.transform=`translate(${viewPan.x}px,${viewPan.y}px) scale(${viewZoom})`}
-function fitView(){const stage=$('#viewCanvas');if(!stage||$('#viewer').classList.contains('hidden'))return;const rect=stage.getBoundingClientRect(),b=bounds();viewZoom=Math.max(.1,Math.min(1.4,(rect.width-50)/b.w,(rect.height-70)/b.h));viewPan={x:(rect.width-b.w*viewZoom)/2-b.x*viewZoom,y:(rect.height-b.h*viewZoom)/2-b.y*viewZoom};transformView()}
-function zoomView(value){const rect=$('#viewCanvas').getBoundingClientRect(),z=Math.max(.1,Math.min(3,value));viewPan={x:rect.width/2-(rect.width/2-viewPan.x)*z/viewZoom,y:rect.height/2-(rect.height/2-viewPan.y)*z/viewZoom};viewZoom=z;transformView()}
+function layoutView(){
+  const stage=$('#viewCanvas');if(!stage||$('#viewer').classList.contains('hidden'))return;
+  const b=bounds(),width=stage.getBoundingClientRect().width;
+  stage.style.height=Math.ceil(b.h*viewZoom+32)+'px';
+  viewPan={x:(width-b.w*viewZoom)/2-b.x*viewZoom,y:16-b.y*viewZoom};transformView();
+}
+function fitView(){const stage=$('#viewCanvas');if(!stage||$('#viewer').classList.contains('hidden'))return;viewZoom=Math.max(.1,Math.min(1.4,(stage.getBoundingClientRect().width-24)/bounds().w));layoutView()}
+function zoomView(value){viewZoom=Math.max(.1,Math.min(3,value));layoutView()}
 $('#editCreation').onclick=()=>{location.hash='editor';route();setEditorFullscreen(true)};
 $('#doneEditing').onclick=()=>{if(save(true))openCreation(board.id)};
 window.addEventListener('resize',()=>requestAnimationFrame(fitView));
