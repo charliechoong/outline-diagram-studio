@@ -1,7 +1,7 @@
 const $=s=>document.querySelector(s), $$=s=>[...document.querySelectorAll(s)];
 const palette=['#e9f1df','#f8efc9','#f8e4da','#e6e7f7','#dfeef3','#ffffff'];
 let galleryPinnedOnly=false;
-let viewZoom=1,viewPan={x:0,y:0};
+let viewZoom=1,viewPan={x:0,y:0},viewNodes=[];
 let boards=[];try{boards=JSON.parse(localStorage.getItem('outline-boards')||'[]')}catch{}
 let board={id:crypto.randomUUID(),title:'A little room to grow',nodes:[],edges:[]},selected=new Set(),tool='select',connectFrom=null,zoom=1,pan={x:0,y:0},history=[],future=[],dirty=true;
 const make=(type,text,x,y,w=160,h=68,color=palette[0],size=16)=>({id:crypto.randomUUID(),type,text,x,y,w,h,color,size});
@@ -79,7 +79,7 @@ function render(){
   refreshSelection();const n=selectedNode();
   if(n){$('#fontSize').value=n.size;$$('.swatch').forEach(b=>b.classList.toggle('active',b.dataset.color===n.color))}
 }
-function edgePath(e){let a=board.nodes.find(n=>n.id===e.from),b=board.nodes.find(n=>n.id===e.to);if(!a||!b)return '';let ax=a.x+a.w/2,ay=a.y+a.h/2,bx=b.x+b.w/2,by=b.y+b.h/2;let vertical=Math.abs(by-ay)>Math.abs(bx-ax)*.5;if(vertical){ay+=Math.sign(by-ay)*a.h/2;by-=Math.sign(by-ay)*b.h/2;let mid=(ay+by)/2;return `M ${ax} ${ay} C ${ax} ${mid}, ${bx} ${mid}, ${bx} ${by}`}ax+=Math.sign(bx-ax)*a.w/2;bx-=Math.sign(bx-ax)*b.w/2;let mid=(ax+bx)/2;return `M ${ax} ${ay} C ${mid} ${ay}, ${mid} ${by}, ${bx} ${by}`}
+function edgePath(e,nodes=board.nodes){let a=nodes.find(n=>n.id===e.from),b=nodes.find(n=>n.id===e.to);if(!a||!b)return '';let ax=a.x+a.w/2,ay=a.y+a.h/2,bx=b.x+b.w/2,by=b.y+b.h/2;let vertical=Math.abs(by-ay)>Math.abs(bx-ax)*.5;if(vertical){ay+=Math.sign(by-ay)*a.h/2;by-=Math.sign(by-ay)*b.h/2;let mid=(ay+by)/2;return `M ${ax} ${ay} C ${ax} ${mid}, ${bx} ${mid}, ${bx} ${by}`}ax+=Math.sign(bx-ax)*a.w/2;bx-=Math.sign(bx-ax)*b.w/2;let mid=(ax+bx)/2;return `M ${ax} ${ay} C ${mid} ${ay}, ${mid} ${by}, ${bx} ${by}`}
 function renderEdges(){
   const g=$('#edgePaths');g.replaceChildren();
   board.edges.forEach(e=>{
@@ -468,9 +468,11 @@ function renderViewer(){
   const edges=document.createElementNS('http://www.w3.org/2000/svg','svg');edges.setAttribute('width','2400');edges.setAttribute('height','1600');edges.classList.add('view-edges');
   edges.innerHTML='<defs><marker id="viewArrow" viewBox="0 0 10 10" refX="9" refY="5" markerWidth="6" markerHeight="6" orient="auto"><path d="M0 0L10 5L0 10z" fill="#8c9690"/></marker></defs>';
   board.edges.forEach(edge=>{const path=document.createElementNS('http://www.w3.org/2000/svg','path');path.setAttribute('d',edgePath(edge));path.setAttribute('fill','none');path.setAttribute('stroke','#8c9690');path.setAttribute('stroke-width','1.6');path.setAttribute('marker-end','url(#viewArrow)');edges.append(path)});world.append(edges);
-  board.nodes.forEach(n=>{
-    const el=document.createElement('div');el.className='node '+n.type;Object.assign(el.style,{left:n.x+'px',top:n.y+'px',width:n.w+'px',height:n.h+'px',background:n.color,fontSize:n.size+'px'});
+  viewNodes=board.nodes.map(n=>({...n}));
+  viewNodes.forEach(n=>{
+    const el=document.createElement('div');el.className='node '+n.type;el.dataset.viewNode=n.id;Object.assign(el.style,{left:n.x+'px',top:n.y+'px',width:n.w+'px',height:n.h+'px',background:n.color,fontSize:n.size+'px'});
     if(n.type==='planner'){
+      el.style.height='auto';el.style.minHeight=n.h+'px';
       const heading=document.createElement('div');heading.className='planner-heading';heading.textContent=n.text;el.append(heading);
       for(const key of ['morning','afternoon','night']){const part=document.createElement('div');part.className='planner-section '+key;const title=document.createElement('strong');title.textContent=key[0].toUpperCase()+key.slice(1);part.append(title);const text=document.createElement('div');text.className='planner-read-text';text.textContent=n.sections?.[key]||'';part.append(text);el.append(part)}
     }else el.textContent=n.text;
@@ -478,7 +480,7 @@ function renderViewer(){
   });
   stage.append(world);const controls=document.createElement('div');controls.className='view-zoom';
   for(const [label,text,action] of [['Zoom out diagram','−',()=>zoomView(viewZoom/1.2)],['Fit diagram','Fit',fitView],['Zoom in diagram','+',()=>zoomView(viewZoom*1.2)]]){const button=document.createElement('button');button.setAttribute('aria-label',label);button.textContent=text;button.onclick=action;controls.append(button)}
-  content.append(stage);content.append(controls);requestAnimationFrame(fitView);
+  content.append(stage);content.append(controls);requestAnimationFrame(()=>{expandViewPlanners();fitView()});
   stage.addEventListener('pointerdown',event=>{
     if(event.button!==0||event.pointerType==='touch'||event.target.closest('button,.planner-read-text'))return;
     const start={x:event.clientX,y:event.clientY,px:viewPan.x,py:viewPan.y};let moved=false;
@@ -490,13 +492,31 @@ function renderViewer(){
 function transformView(){const world=$('#viewWorld');if(world)world.style.transform=`translate(${viewPan.x}px,${viewPan.y}px) scale(${viewZoom})`}
 function layoutView(){
   const stage=$('#viewCanvas');if(!stage||$('#viewer').classList.contains('hidden'))return;
-  const b=bounds(),width=stage.getBoundingClientRect().width;
+  const b=viewBounds(),width=stage.getBoundingClientRect().width;
   stage.style.height=Math.ceil(b.h*viewZoom+32)+'px';
   viewPan={x:(width-b.w*viewZoom)/2-b.x*viewZoom,y:16-b.y*viewZoom};transformView();
 }
-function fitView(){const stage=$('#viewCanvas');if(!stage||$('#viewer').classList.contains('hidden'))return;viewZoom=Math.max(.1,Math.min(1.4,(stage.getBoundingClientRect().width-24)/bounds().w));layoutView()}
+function fitView(){const stage=$('#viewCanvas');if(!stage||$('#viewer').classList.contains('hidden'))return;viewZoom=Math.max(.1,Math.min(1.4,(stage.getBoundingClientRect().width-24)/viewBounds().w));layoutView()}
 function zoomView(value){viewZoom=Math.max(.1,Math.min(3,value));layoutView()}
 $('#editCreation').onclick=()=>{location.hash='editor';route();setEditorFullscreen(true)};
 $('#doneEditing').onclick=()=>{if(save(true))openCreation(board.id)};
 window.addEventListener('resize',()=>requestAnimationFrame(fitView));
 setInterval(()=>{if(document.body.classList.contains('viewing-creation'))updateViewDate()},60000);
+
+function viewBounds(){
+  if(!viewNodes.length)return bounds();
+  const x=Math.min(...viewNodes.map(n=>n.x))-40,y=Math.min(...viewNodes.map(n=>n.y))-40;
+  return {x,y,w:Math.max(...viewNodes.map(n=>n.x+n.w))-x+40,h:Math.max(...viewNodes.map(n=>n.y+n.h))-y+40};
+}
+function expandViewPlanners(){
+  const world=$('#viewWorld');if(!world)return;
+  const savedHeights=new Map(viewNodes.map(n=>[n.id,n.h]));
+  for(const n of viewNodes){if(n.type==='planner'){const el=world.querySelector(`[data-view-node="${n.id}"]`);if(el)n.h=Math.max(n.h,el.offsetHeight)}}
+  // Expanded reading cards push lower items down without changing saved canvas data.
+  const planners=viewNodes.filter(n=>n.type==='planner').sort((a,b)=>a.y-b.y);
+  for(const p of planners){const oldHeight=savedHeights.get(p.id),growth=p.h-oldHeight;if(growth<=0)continue;
+    for(const n of viewNodes){if(n.id!==p.id&&n.y>=p.y+oldHeight-1&&n.x<p.x+p.w&&n.x+n.w>p.x)n.y+=growth}
+  }
+  for(const n of viewNodes){const el=world.querySelector(`[data-view-node="${n.id}"]`);if(el)el.style.top=n.y+'px'}
+  const paths=world.querySelectorAll('.view-edges>path');board.edges.forEach((edge,index)=>paths[index]?.setAttribute('d',edgePath(edge,viewNodes)));
+}
